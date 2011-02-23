@@ -3,8 +3,6 @@ import numpy as np
 import copy
 import warnings
 
-import sys
-sys.path.append("/data/hguenther/soft/lib/python")
 import os
 
 import coords
