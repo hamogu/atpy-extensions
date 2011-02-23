@@ -44,16 +44,6 @@ class Table(atpy.Table):
                 except ValueError:
                     self.columns[name].__dict__['null']=self.default_null(self[name].dtype)
                     warnings.warn("WARNING: null value of column %s has been reset to default." % name)
-    
-    def keys(self):
-        '''An alias for Table.data.dtype.names
-        
-        keys() is a standard function to look for keys to iterate over, so we supply that.'''
-        try: 
-		names = self.data.dtype.names
-		return names
-	except AttributeError:
-		return []
 
     def default_null(self, dtype):
         '''Return the default null for the datatype dtype.
