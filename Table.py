@@ -1,4 +1,4 @@
-import numpy as npi
+import numpy as np
 import warnings
 import atpy
 

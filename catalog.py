@@ -8,9 +8,139 @@ import os
 import asciitable
 import Table     # which contains the Table which in turn inherits from atpys
 
+import great_circle_dist
 import coords
 
 class SimpleCoords(object):
+    '''A simple class to handle a column of coordinates for a catalog.
+    
+    The search is implemented in Python,
+    thus its internals are redily avaiable, which is great for debugging or
+    customizing.
+    
+    There are two levels to acess the coordinates in a table:
+        1) On the highly abstracted level routines return
+           the index of the nearest neigbour or all sources within
+           a given distance.
+        2) On the lower level the coordinates themselves can be read out as
+           SimpleCoords[2:4]. The return values are always of type 
+           coords.Position (module coords, s. below)
+           To set coordinates, they need to be transformed to that type.
+           The function calc is provided to do just that.
+        3) On the lowest level Python allows access to all internals at own risk :-)
+
+    '''
+    def __init__(self, pos = None):
+        if pos: self.table = pos
+        else: self.table=np.array([],dtype=object)
+
+
+    ### Convenience functions to make coordinates as easy to use as a Python sequence ###
+    def __getitem__(self, item):
+	    if np.array(item).size == 0:
+                return []
+            #elif np.array(self.table).size == 1:
+            #    return self.table
+            else: return self.table[item]
+
+    def __setitem__(self, key, value):
+        if (key == 0) and (len(self.table) == 0): self.table= np.array([value],dtype=object)
+        else: self.table[key]=value
+
+    def __len__(self):
+        return len(self.table)
+
+    def set(self,pos):
+        '''Replaces the full table of coordinates.
+
+        Input:
+            pos: 2*N np.ndarray for RA, DEC values in degrees 
+        '''
+        if isinstance(pos, np.ndarray): self.table = pos
+        else: self.table = np.array(pos)
+
+    def __str__(self):
+        str(self.table)
+
+
+    ### Functions to change set of coordinates ###
+    def calc(self, pos, units=None):
+        '''Do nothing. This is a hook for more complicated classes.
+
+        pos: coordinates'''
+        if units: warnings.warn('Coords to not support automatic unit conversion - Ignored!')
+        return pos
+
+    def reset(self):
+        '''Reset the table to empty, but keep all other attributes.'''
+        self.table=np.array([],dtype=object)
+
+    def append(self, pos):
+        '''Append a np.ndarray	'''
+        self.table=np.hstack((self.table, pos))
+
+
+    ### Functions to search in the coordinates ###
+    def distto(self,pos, ind=None):
+        '''Calculate an array of distances of all elements to position pos
+
+        This ia medium-level acess routine. 
+        It return a list of coords.AngSep objects.
+        input:
+           pos: [RA, DEC] in deg of footpoint for distance
+        keyword:
+           ind: set to index array to calculate distances only for a subset
+               of all coordinates (default = None -> all)
+        '''
+        return great_circle_dist.dist_radec(*pos, self.table[0,ind].selt.table[1,ind], unit='deg')
+
+    def NNindexdist(self, pos):
+        '''Return index and distance of the entry closest to pos.
+
+        This ia medium-level acess routine. 
+        It returns an index and a distance.
+        input:
+            pos: [RA, DEC] in deg of footpoint for distance
+        '''
+        dist=self.distto(pos)
+        return min(enumerate(dist), key=itemgetter(1))
+
+    def NNindex(self, pos, maxdist=-1., units = None):
+        '''Return index of the entry closest to pos.
+
+        This is high-level acess routine. 
+        It returns an index.
+        input:
+            pos: [RA, DEC] in deg of footpoint for distance
+        keywords:
+            maxdist: If no match within maxdist is found, None is returned.
+                For negative values of maxdist the closest match is retunred,
+                whatever its distance. [default = -1]
+        '''
+        if units: warnings.warn('Coords to not support automatic unit conversion - Ignored!')
+        if len(self) == 0: return None
+        NNindex, NNdist = self.NNindexdist(pos)
+        if maxdist < 0. or maxdist >= NNdist:
+            return NNindex
+        else:
+            return None
+
+    def allwithin(self, pos, maxdist, units = None):
+        '''Return a list of indices of all entries within maxdist of pos.
+
+        This is high-level acess routine. 
+        It returns a list of indices. If no object is found, the list is empty.
+        input:
+            pos: [RA, DEC] in deg of footpoint for distance
+            maxdist: If no match within maxdist is found, None is returned.
+                For negative values of maxdist the closest match is returned,
+                whatever its distance. [default = -1]
+        '''
+        if units: warnings.warn('Coords to not support automatic unit conversion - Ignored!')
+        dist=self.distto(pos)
+        return (dist <= maxdist).nonzero()
+
+class CoordsClassCoords(object):
     '''A simple class to handle a column of coordinates for a catalog.
     
     This class is not very sophisticated, in fact it is the simplest possible
@@ -23,7 +153,7 @@ class SimpleCoords(object):
 	   e.g. organizing the coordinates in a KD-tree to faster searching
 	   or interfacing a C module to do that.
 
-    SimpleCoords is good for Catalogs with < 1000 entries, for situations, 
+    SimpleCoords is good for Catalogs with < 1000 entries for situations
     when search time is not an issue. The search is implemented in Python,
     thus its internals are redily avaiable, which is great for debugging or
     customizing.
@@ -466,7 +596,7 @@ class CartesianCoords(SimpleCoords):
     
     ### Functions to change set of coordinates ###
     def calc(self, pos):
-	'''Do nothing. This is just an placeholder for more complicated Coords.
+	'''Do nothing. This is just a hook for more complicated Coords.
 	'''
         return pos
     
