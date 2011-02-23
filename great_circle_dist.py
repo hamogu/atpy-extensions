@@ -114,7 +114,7 @@ def Vincenty(phi_0, lam_0, phi_1, lam_1):
     sl = np.sin(d_lam)
     cl = np.cos(d_lam)
 
-    nom = np.sqrt((cp1*sl1)**2.+(cp0*sp1-sp0*cp1*cl)**2.)
+    nom = np.sqrt((cp1*sl)**2.+(cp0*sp1-sp0*cp1*cl)**2.)
     denom = sp0*sp1 + cp0*cp1*cl
 
     return np.arctan2(nom,denom)
