@@ -30,9 +30,8 @@ class SimpleCoords(object):
         3) On the lowest level Python allows access to all internals at own risk :-)
 
     '''
-    def __init__(self, pos = None):
-        if pos: self.table = pos
-        else: self.table=np.array([],dtype=object)
+    def __init__(self, pos = np.array([],dtype=np.float64)):
+        self.table = pos
 
 
     ### Convenience functions to make coordinates as easy to use as a Python sequence ###
@@ -41,11 +40,11 @@ class SimpleCoords(object):
                 return []
             #elif np.array(self.table).size == 1:
             #    return self.table
-            else: return self.table[item]
+            else: return self.table[:,item]
 
     def __setitem__(self, key, value):
         if (key == 0) and (len(self.table) == 0): self.table= np.array([value],dtype=object)
-        else: self.table[key]=value
+        else: self.table[:,key]=value
 
     def __len__(self):
         return len(self.table)
@@ -56,6 +55,8 @@ class SimpleCoords(object):
         Input:
             pos: 2*N np.ndarray for RA, DEC values in degrees 
         '''
+        if pos.shape[0] != 2:
+            raise ValueError('Input coordinate table must be of shape (2,N)')
         if isinstance(pos, np.ndarray): self.table = pos
         else: self.table = np.array(pos)
 
@@ -77,6 +78,8 @@ class SimpleCoords(object):
 
     def append(self, pos):
         '''Append a np.ndarray	'''
+        if pos.shape[0] != 2:
+            raise ValueError('Input coordinate table must be of shape (2,N)')
         self.table=np.hstack((self.table, pos))
 
 
@@ -92,7 +95,7 @@ class SimpleCoords(object):
            ind: set to index array to calculate distances only for a subset
                of all coordinates (default = None -> all)
         '''
-        return great_circle_dist.dist_radec(*pos, self.table[0,ind].selt.table[1,ind], unit='deg')
+        return great_circle_dist.dist_radec(pos[0], pos[1], self.table[0,ind], self.table[1,ind], unit='deg')[0]
 
     def NNindexdist(self, pos):
         '''Return index and distance of the entry closest to pos.
@@ -103,7 +106,7 @@ class SimpleCoords(object):
             pos: [RA, DEC] in deg of footpoint for distance
         '''
         dist=self.distto(pos)
-        return min(enumerate(dist), key=itemgetter(1))
+        return np.argmin(dist), np.min(dist)
 
     def NNindex(self, pos, maxdist=-1., units = None):
         '''Return index of the entry closest to pos.
@@ -138,7 +141,7 @@ class SimpleCoords(object):
         '''
         if units: warnings.warn('Coords to not support automatic unit conversion - Ignored!')
         dist=self.distto(pos)
-        return (dist <= maxdist).nonzero()
+        return (dist <= maxdist).nonzero()[0]
 
 class CoordsClassCoords(object):
     '''A simple class to handle a column of coordinates for a catalog.
