@@ -28,7 +28,7 @@ def simple_decorator(decorator):
 
 @simple_decorator
 def unitchecked(func):
-    '''Decorator to transfrom untis of angles
+    '''Decorator to transfrom units of angles
     
     This decorator transforms units of angle, before they are fed into 
     any a function to calculate the angular distance. It expects the 
