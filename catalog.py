@@ -338,15 +338,13 @@ class BaseCatalog(Table.Table):
     def __init__(self, *args, **kwargs):
         self._ra = 'RA'
         self._dec = 'DEC'
-        self.form_coords = coord_base
+        if 'form_coords' in kwargs: self.form_coords = (kwargs.pop('form_coords'))
+        else: self.form_coords = coord_base
         if 'Coords' in kwargs: self.coords = (kwargs.pop('Coords'))
         else: self.coords = SimpleCoords()
         Table.Table.__init__(self, *args, **kwargs)
         self.match_source = match_source
-    
-    ### Functions to make self.coords ###
-    def form_coords(self, data):
-        raise NotImplementedError('You need to override form_coords with a function to form coordinates from the data!')
+
     
     def calc_all_coords(self):
         self.coords.set(self.coords.calc(self.form_coords(self, self.data)))
@@ -540,7 +538,7 @@ class SimpleCatalog(BaseCatalog):
         BaseCatalog.__init__(self, *args, **kwargs)
 
 class CoordsClassCatalog(BaseCatalog):
-    '''A BaseCatalog initialized with SimpleCoords as coordinate table 
+    '''A BaseCatalog initialized with CoordsClassCoords as coordinate table 
     '''
     def __init__(self, *args, **kwargs):
         kwargs['Coords'] = SimpleCoords()
