@@ -6,7 +6,7 @@ import warnings
 import os
 
 import asciitable
-import Table     # which contains the Table which in turn inherits from atpys
+import Table     # which contains the Table which in turn inherits from atpy
 
 import great_circle_dist
 import coords
@@ -15,7 +15,7 @@ class SimpleCoords(object):
     '''A simple class to handle a column of coordinates for a catalog.
     
     The search is implemented in Python,
-    thus its internals are redily avaiable, which is great for debugging or
+    thus its internals are readily available, which is great for debugging or
     customizing.
     
     There are two levels to acess the coordinates in a table:
@@ -23,10 +23,7 @@ class SimpleCoords(object):
            the index of the nearest neigbour or all sources within
            a given distance.
         2) On the lower level the coordinates themselves can be read out as
-           SimpleCoords[2:4]. The return values are always of type 
-           coords.Position (module coords, s. below)
-           To set coordinates, they need to be transformed to that type.
-           The function calc is provided to do just that.
+           SimpleCoords[2:4]. 
         3) On the lowest level Python allows access to all internals at own risk :-)
 
     '''
@@ -40,11 +37,11 @@ class SimpleCoords(object):
                 return []
             #elif np.array(self.table).size == 1:
             #    return self.table
-            else: return self.table[:,item]
+            else: return self.table[item]
 
     def __setitem__(self, key, value):
         if (key == 0) and (len(self.table) == 0): self.table= np.array([value],dtype=object)
-        else: self.table[:,key]=value
+        else: self.table[key]=value
 
     def __len__(self):
         return len(self.table)
@@ -53,10 +50,10 @@ class SimpleCoords(object):
         '''Replaces the full table of coordinates.
 
         Input:
-            pos: 2*N np.ndarray for RA, DEC values in degrees 
+            pos: N*2 np.ndarray for RA, DEC values in degrees 
         '''
-        if pos.shape[0] != 2:
-            raise ValueError('Input coordinate table must be of shape (2,N)')
+        if pos.shape[1] != 2:
+            raise ValueError('Input coordinate table must be of shape (N, 2)')
         if isinstance(pos, np.ndarray): self.table = pos
         else: self.table = np.array(pos)
 
@@ -78,13 +75,15 @@ class SimpleCoords(object):
 
     def append(self, pos):
         '''Append a np.ndarray        '''
-        if pos.shape[0] != 2:
-            raise ValueError('Input coordinate table must be of shape (2,N)')
-        self.table=np.hstack((self.table, pos))
+        if (pos.ndim ==2 and pos.shape[1] == 2) or (pos.ndim ==1 and pos.shape[0] == 2):
+            self.table=np.vstack((self.table, pos))
+        else:
+            raise ValueError('Input coordinate table must be of shape (N,2) or (2,)')
+        
 
 
     ### Functions to search in the coordinates ###
-    def distto(self,pos, ind=None):
+    def distto(self,pos, ind= slice(None)):
         '''Calculate an array of distances of all elements to position pos
 
         This ia medium-level acess routine. 
@@ -93,9 +92,9 @@ class SimpleCoords(object):
            pos: [RA, DEC] in deg of footpoint for distance
         keyword:
            ind: set to index array to calculate distances only for a subset
-               of all coordinates (default = None -> all)
+               of all coordinates (default = `slice(None)` -> all)
         '''
-        return great_circle_dist.dist_radec(pos[0], pos[1], self.table[0,ind], self.table[1,ind], unit='deg')[0]
+        return great_circle_dist.dist_radec(pos[0], pos[1], self.table[ind,0], self.table[ind,1], unit='deg')
 
     def NNindexdist(self, pos):
         '''Return index and distance of the entry closest to pos.
@@ -116,7 +115,7 @@ class SimpleCoords(object):
         input:
             pos: [RA, DEC] in deg of footpoint for distance
         keywords:
-            maxdist: If no match within maxdist is found, None is returned.
+            maxdist: If no match within maxdist [in deg] is found, None is returned.
                 For negative values of maxdist the closest match is retunred,
                 whatever its distance. [default = -1]
         '''
@@ -171,9 +170,6 @@ class CoordsClassCoords(object):
            To set coordinates, they need to be transformed to that type.
            The function calc is provided to do just that.
         3) On the lowest level Python allows access to all internals at own risk :-)
-    
-    SimpleCoords uses the coords package to represent coordinates and
-    angular distances. 
      
     SimpleCoords uses coords which is Copyright (C) 2006 
     Association of Universities for Research in Astronomy (AURA)
@@ -331,7 +327,8 @@ def coord_base(self, data):
     raise NotImplementedError
 
 def coord_simple(self, data):
-    return np.array([data[self._ra], data[self._dec]])
+    '''form N*2 array from data[self._ra] and data[self._dec]'''
+    return np.array([data[self._ra], data[self._dec]]).transpose()
 
 class BaseCatalog(Table.Table):
     
@@ -392,9 +389,9 @@ class BaseCatalog(Table.Table):
         Table.Table.reset(self)
         self.coords.reset()
     
-    def append(self, newdata, pos=None):
+    def append(self, newdata, pos=[]):
         Table.Table.append(self, newdata)
-        if pos:
+        if len(pos) > 0:
             self.coords.append(pos)
         else:
             self.coords.append(map(self.coords.calc,self.form_coords(self, newdata)))
