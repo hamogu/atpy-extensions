@@ -2,7 +2,7 @@ import numpy as np
 import warnings
 import atpy
 
-# TBD add support for non-scalars in add_source etc.
+# TBD add support for non-scalars 
 
 class Table(atpy.Table):
     '''Extends AtPy.Table functionalty to single rows

@@ -27,7 +27,7 @@ class SimpleCoords(object):
         3) On the lowest level Python allows access to all internals at own risk :-)
 
     '''
-    def __init__(self, pos = np.array([],dtype=np.float64)):
+    def __init__(self, pos = np.array([],dtype = np.float64)):
         self.table = pos
 
 
@@ -40,7 +40,7 @@ class SimpleCoords(object):
             else: return self.table[item]
 
     def __setitem__(self, key, value):
-        if (key == 0) and (len(self.table) == 0): self.table= np.array([value],dtype=object)
+        if (key == 0) and (len(self.table) == 0): self.table= np.array([value], dtype = np.float64)
         else: self.table[key]=value
 
     def __len__(self):
@@ -52,10 +52,18 @@ class SimpleCoords(object):
         Input:
             pos: N*2 np.ndarray for RA, DEC values in degrees 
         '''
-        if pos.shape[1] != 2:
+        if ~isinstance(pos, np.ndarray): pos = np.array(pos)
+        if pos.ndim == 1:
+            if (pos.shape == (0,)):
+                self.table=np.array([],dtype = np.float64)
+            elif (pos.shape == (2,)):
+                self.table = pos.reshape(1,2)
+            else:
+                raise ValueError('Input coordinate table must be of shape (N, 2)')
+        elif (pos.ndim == 2) & (pos.shape[1] == 2):
+            self.table = pos
+        else:
             raise ValueError('Input coordinate table must be of shape (N, 2)')
-        if isinstance(pos, np.ndarray): self.table = pos
-        else: self.table = np.array(pos)
 
     def __str__(self):
         str(self.table)
@@ -71,7 +79,7 @@ class SimpleCoords(object):
 
     def reset(self):
         '''Reset the table to empty, but keep all other attributes.'''
-        self.table=np.array([],dtype=object)
+        self.table=np.array([],dtype = np.float64)
 
     def append(self, pos):
         '''Append a np.ndarray        '''
@@ -340,7 +348,8 @@ class BaseCatalog(Table.Table):
         if 'Coords' in kwargs: self.coords = (kwargs.pop('Coords'))
         else: self.coords = SimpleCoords()
         Table.Table.__init__(self, *args, **kwargs)
-        self.match_source = match_source
+        self.match_source = match_source_dist
+        self.match_source_dist = 1./3600.
 
     
     def calc_all_coords(self):
@@ -429,7 +438,7 @@ class BaseCatalog(Table.Table):
         if (self._ra in overwritenames) or (self._dec in overwritenames):
             self.coords[rowindex] = self.coords.calc(self.form_coords(self, self.rows([rowindex]))[0])
     
-    def add_row(self, data, pos = None, auto_add_columns = False):  #Do I really need to copy everything, just to get the pos=pos in there? 
+    def add_row(self, data, pos, auto_add_columns = False):  #Do I really need to copy everything, just to get the pos=pos in there? 
         ''' If pos is given, it needs to be of coord type, if not use coords.calc first
         '''
         # The following line works because of short-circuting - NoneType has no len()!
@@ -446,10 +455,9 @@ class BaseCatalog(Table.Table):
         #if this is the first row in a new table, then auto_add_columns will add that row
         # so an update of row zero is all we want
         if add_first_row_in_table:
-                if pos: self.coords[0] = pos #make empty coords[0]. Will be recalculated by update_row
-                else: self.coords[0] = self.coords.calc(self.form_coords(self, data))
-                self.update_row(0, newrow, overwrite = True)
-                if pos: self.coords[0] = pos
+            #self.coords[0] = self.coords.calc(self.form_coords(self, data))
+            self.update_row(0, newrow, overwrite = True)
+            self.coords[0] = pos
         else: self.append(newrow, pos = pos)
     
     
@@ -474,7 +482,7 @@ class BaseCatalog(Table.Table):
         '''
         match_source=self.match_source(self, pos,data)
         if match_source == None:
-            self.add_row(data, pos = pos, auto_add_columns = auto_add_columns)
+            self.add_row(data, pos, auto_add_columns = auto_add_columns)
         else:
             self.update_row(match_source, data, auto_add_columns = auto_add_columns, overwrite = overwrite)
     
@@ -519,8 +527,9 @@ class BaseCatalog(Table.Table):
             if match_source != None:
                 self.update_row(subsetind[match_source], data[i], auto_add_columns = auto_add_columns, overwrite = overwrite)
     
-def match_source(self, pos, data):
-    return self.coords.NNindex(pos)
+
+def match_source_dist(self, pos, data):
+   return self.coords.NNindex(pos, maxdist = self.match_source_dist)
 
 def match_source_name(self, pos, data):
         return np.where(self['name'] == pos)[0]
@@ -530,6 +539,15 @@ class SimpleCatalog(BaseCatalog):
     '''
     def __init__(self, *args, **kwargs):
         kwargs['Coords'] = SimpleCoords()
+        if not 'form_coords' in kwargs:
+            kwargs['form_coords'] = coord_simple
+        BaseCatalog.__init__(self, *args, **kwargs)
+
+class CartesianCatalog(BaseCatalog):
+    '''A BaseCatalog initialized with CarteseanCoords as coordinate table 
+    '''
+    def __init__(self, *args, **kwargs):
+        kwargs['Coords'] = CartesianCoords()
         if not 'form_coords' in kwargs:
             kwargs['form_coords'] = coord_simple
         BaseCatalog.__init__(self, *args, **kwargs)
@@ -605,7 +623,6 @@ class CartesianCoords(SimpleCoords):
     def __init__(self, pos = None):
         if pos: self.table = pos
         else: self.table=np.array([],dtype=object)
-    
     
     ### Functions to change set of coordinates ###
     def calc(self, pos):
