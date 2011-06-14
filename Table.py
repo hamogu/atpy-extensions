@@ -40,11 +40,11 @@ class Table(atpy.Table):
         '''Return the default null for the datatype dtype.
         
         The class defines the values character_null, float_null, integer_null, complex_null
-	Given a datatyoe this function looks up and returns the default null type.
-	The default types can be changed by changing the class attributes
-	character_null, float_null, integer_null and complex_null
-	'''
-	#TBD: Can this maybe implemented easier with a dictionary?
+        Given a datatyoe this function looks up and returns the default null type.
+        The default types can be changed by changing the class attributes
+        character_null, float_null, integer_null and complex_null
+        '''
+        #TBD: Can this maybe implemented easier with a dictionary?
         if np.issubdtype(dtype, np.character):  # np.character contains str and unicode
             return self.character_null
         elif np.issubdtype(dtype, float):
@@ -57,9 +57,9 @@ class Table(atpy.Table):
             raise ValueError('No default null value for dtype %s' % dtype )
     
     def add_empty_column(self, name, dtype, **kwargs):
-	if not 'null' in kwargs: kwargs['null'] = self.default_null(dtype)
-	atpy.Table.add_empty_column(self, name, dtype, **kwargs)
-	self.data[name][:] = self.columns[name].null
+        if not 'null' in kwargs: kwargs['null'] = self.default_null(dtype)
+        atpy.Table.add_empty_column(self, name, dtype, **kwargs)
+        self.data[name][:] = self.columns[name].null
     
     def _fields(self, data):
         '''This internal method finds the namelist of common subscriptable objects
@@ -83,16 +83,16 @@ class Table(atpy.Table):
                 raise TypeError('No rule found to match fields to input keys')
     
     def auto_add_columns(self, data, auto_add_columns):
-	'''This method adds columns to the table based on the data found in data
-	
-	This method detects the keyword in data and then adds columns to the table.
-	Input:
-	    data: can be any object, where _fields can detect the keywords.
-	    auto_add_columns: If true columns for all keys in data, which are 
-	        not yet in the table, are added
-		If it is a string or a list of strings, only those columns are
-		added, provided they are not contained in the table.
-	'''
+        '''This method adds columns to the table based on the data found in data
+        
+        This method detects the keyword in data and then adds columns to the table.
+        Input:
+            data: can be any object, where _fields can detect the keywords.
+            auto_add_columns: If true columns for all keys in data, which are 
+                not yet in the table, are added
+                If it is a string or a list of strings, only those columns are
+                added, provided they are not contained in the table.
+        '''
         if auto_add_columns == True:
             auto_add_columns = self._fields(data)
         if isinstance(auto_add_columns, basestring):
@@ -102,13 +102,13 @@ class Table(atpy.Table):
         if not set_auto_add_columns.issubset(set_data_dtype_names):
             raise ValueError(str(set_auto_add_columns - set_data_dtype_names) + ' is not contained in data!')
         # If self.data in not empty, take out those names which already exist
-	if (isinstance(self.data, type(None))) or len(self.data) == 0:
-		nlines = 1 #If table is still empty, add 1 line
-	else:
-		#if not len(self.data) > 0: set_auto_add_columns = set_auto_add_columns - set(self.names)
-		#if self.data: shape = len(self.data)
-		set_auto_add_columns = set_auto_add_columns - set(self.names)
-		nlines = len(self.data)
+        if (isinstance(self.data, type(None))) or len(self.data) == 0:
+                nlines = 1 #If table is still empty, add 1 line
+        else:
+                #if not len(self.data) > 0: set_auto_add_columns = set_auto_add_columns - set(self.names)
+                #if self.data: shape = len(self.data)
+                set_auto_add_columns = set_auto_add_columns - set(self.names)
+                nlines = len(self.data)
         for columnname in list(set_auto_add_columns):
             # The column we add could be a vector column of vectors, so copy its shape
             # Not all objects have a shape attribute, so convert to np.array first
@@ -128,8 +128,8 @@ class Table(atpy.Table):
                 self.add_empty_column(columnname, dtype, null=null, shape = shape)
     
     def empty_row(self):
-	'''This method returns an empty row for the table, based on columns.null
-	'''
+        '''This method returns an empty row for the table, based on columns.null
+        '''
         if len(self) == 0:
             newrow = None
         else:
@@ -139,48 +139,48 @@ class Table(atpy.Table):
         return newrow
     
     def add_row(self, data, auto_add_columns = False):
-	'''This method adds a row to the table.
-	
-	A similar functionalty can be achived with append, but add_row is more 
-	general. It first creates an empty_row and fills only those values
-	for which keys are found in data.
-	Input:
-	    data: can be any object, where _fields can detect the keywords.
-	    auto_add_columns: If true columns for all keys in data, which are 
-	        not yet in the table, are added
-		If it is a string or a list of strings, only those columns are
-		added, provided they are not contained in the table.
-	'''
+        '''This method adds a row to the table.
+        
+        A similar functionalty can be achived with append, but add_row is more 
+        general. It first creates an empty_row and fills only those values
+        for which keys are found in data.
+        Input:
+            data: can be any object, where _fields can detect the keywords.
+            auto_add_columns: If true columns for all keys in data, which are 
+                not yet in the table, are added
+                If it is a string or a list of strings, only those columns are
+                added, provided they are not contained in the table.
+        '''
         if self.data == None: add_first_row_in_table = True  #if self.data does not work -> "truth value of an array in ambiguous"
-	else: add_first_row_in_table = False
-	if auto_add_columns != False:
+        else: add_first_row_in_table = False
+        if auto_add_columns != False:
             self.auto_add_columns(data,auto_add_columns)
         newrow=self.empty_row()
         for datum in list(set(self._fields(data)) & set(self.keys())):
             newrow.data[datum] = data[datum]
-	#if this is the first row in a new table, then auto_add_columns will add that row
-	# so an update of row zero is all we want
+        #if this is the first row in a new table, then auto_add_columns will add that row
+        # so an update of row zero is all we want
         if add_first_row_in_table: self.update_row(0, newrow, overwrite = True)
-	else: self.append(newrow)
+        else: self.append(newrow)
     
     def update_row(self, rowindex, data, auto_add_columns = False, overwrite = False):
-	'''Modifies the values of a specific row in the table under certain conditions.
-	
-	Input:
-	    rowindex: index of row to be changed
-	    data: can be any object, where _fields can detect the keywords.
-	    auto_add_columns: If true columns for all keys in data, which are 
-	        not yet in the table, are added
-		If it is a string or a list of strings, only those columns are
-		added, provided they are not contained in the table.
-	    overwrite = False: The method only changes those columns which are
-	        new (from auto_add_columns) or equal the null value in the table.
-		If true the values for all keys in data are replaced. 
-		If overwrite is a string or a list of strings, only those
-		columns (and those with null values) are overwritten in the table.
-		For vector columns overwrite either leaves the full vector in a row
-		unchanged or overwrites the full vector (not just single elements).
-	'''	
+        '''Modifies the values of a specific row in the table under certain conditions.
+        
+        Input:
+            rowindex: index of row to be changed
+            data: can be any object, where _fields can detect the keywords.
+            auto_add_columns: If true columns for all keys in data, which are 
+                not yet in the table, are added
+                If it is a string or a list of strings, only those columns are
+                added, provided they are not contained in the table.
+            overwrite = False: The method only changes those columns which are
+                new (from auto_add_columns) or equal the null value in the table.
+                If true the values for all keys in data are replaced. 
+                If overwrite is a string or a list of strings, only those
+                columns (and those with null values) are overwritten in the table.
+                For vector columns overwrite either leaves the full vector in a row
+                unchanged or overwrites the full vector (not just single elements).
+        '''        
         if auto_add_columns != False:
             self.auto_add_columns(data,auto_add_columns)
         if overwrite:
