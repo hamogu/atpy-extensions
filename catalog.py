@@ -534,6 +534,9 @@ def match_source_dist(self, pos, data):
 def match_source_name(self, pos, data):
         return np.where(self['name'] == pos)[0]
 
+def match_source_none(self,pos,data):
+    return None
+
 class SimpleCatalog(BaseCatalog):
     '''A BaseCatalog initialized with SimpleCoords as coordinate table 
     '''
@@ -593,8 +596,8 @@ class StetsonStandardCatalog(BaseCatalog):
                 else:
                         # no arg required in code, but need to put any dummy
                         # because a call with no argument would create an empty dummy
-                        posfile = os.path.join(os.path.dirname(__file__),'Land.pos')
-                        magfile = os.path.join(os.path.dirname(__file__),'hans.dat')
+                        posfile = os.path.join(os.path.dirname(__file__), '..', 'catalog', 'Land.pos')
+                        magfile = os.path.join(os.path.dirname(__file__), '..', 'catalog', 'hans.dat')
                         kwargs['type'] = 'ascii'
                         kwargs['Reader'] = asciitable.NoHeader
                         kwargs['names'] = ['Stand_RA', 'Stand_DEC', 'RAh', 'RAmin', 'RAsec', 'DECd', 'DECmin', 'DECsec', 'xoffset', 'yoffset', 'x', 'y', 'name']
