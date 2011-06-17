@@ -60,6 +60,10 @@ class Table(atpy.Table):
         if not 'null' in kwargs: kwargs['null'] = self.default_null(dtype)
         atpy.Table.add_empty_column(self, name, dtype, **kwargs)
         self.data[name][:] = self.columns[name].null
+   
+    def add_column(self, name, data, **kwargs):
+        if not 'null' in kwargs: kwargs['null'] = self.default_null(data.dtype)
+        atpy.Table.add_empty_column(self, name, dtype, **kwargs)
     
     def _fields(self, data):
         '''This internal method finds the namelist of common subscriptable objects
