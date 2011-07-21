@@ -22,6 +22,7 @@ class Table(atpy.Table):
     float_null = np.nan
     integer_null = 0
     complex_null = np.complex(np.nan)
+    object_null = None
     
     def __init__(self, *args, **kwargs):
         atpy.Table.__init__(self, *args, **kwargs)
@@ -53,6 +54,8 @@ class Table(atpy.Table):
             return self.integer_null
         elif np.issubdtype(dtype, complex):
             return self.complex_null
+        elif dtype == object:
+            return self.object_null
         else:
             raise ValueError('No default null value for dtype %s' % dtype )
     
@@ -63,7 +66,7 @@ class Table(atpy.Table):
    
     def add_column(self, name, data, **kwargs):
         if not 'null' in kwargs: kwargs['null'] = self.default_null(data.dtype)
-        atpy.Table.add_empty_column(self, name, dtype, **kwargs)
+        atpy.Table.add_column(self, name, data, **kwargs)
     
     def _fields(self, data):
         '''This internal method finds the namelist of common subscriptable objects
