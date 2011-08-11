@@ -50,9 +50,11 @@ class SimpleCoords(object):
         '''Replaces the full table of coordinates.
 
         Input:
-            pos: N*2 np.ndarray for RA, DEC values in degrees 
+            pos: N*2 np.ndarray for RA, DEC values in degrees
+                 set will remove single dimensional entires and recost 2*N arrays 
         '''
         if ~isinstance(pos, np.ndarray): pos = np.array(pos)
+        pos = np.squeeze(pos) #remove single dimensional entries
         if pos.ndim == 1:
             if (pos.shape == (0,)):
                 self.table=np.array([],dtype = np.float64)
@@ -74,7 +76,7 @@ class SimpleCoords(object):
         '''Do nothing. This is a hook for more complicated classes.
 
         pos: coordinates'''
-        if units: warnings.warn('Coords to not support automatic unit conversion - Ignored!')
+        if units: warnings.warn('SimpleCoords do not support automatic unit conversion - Ignored!')
         return pos
 
     def reset(self):
@@ -338,6 +340,13 @@ def coord_simple(self, data):
     '''form N*2 array from data[self._ra] and data[self._dec]'''
     return np.array([data[self._ra], data[self._dec]]).transpose()
 
+def coord_str2RADEC(self, data):
+    t = asciitable.read(data[self._ra], delimiter=':', Reader = asciitable.NoHeader, names =  ['h','m','s'])
+    RA = t.h*15. + t.m / 4. + t.s/4./60.
+    t = asciitable.read(data[self._dec], delimiter=':', Reader = asciitable.NoHeader, names =  ['d','m','s'])
+    DEC = t.d + t.m / 60. + t.s/3600.
+    return coord_simple(self, {self._ra: RA, self._dec: DEC})
+
 class BaseCatalog(Table.Table):
     
     def __init__(self, *args, **kwargs):
@@ -490,7 +499,7 @@ class BaseCatalog(Table.Table):
         for i in range(len(data)):
             self.add_source_info(pos[i], data[[i]], auto_add_columns = auto_add_columns, overwrite = overwrite)
     
-    def update_rows(self, pos, data, auto_add_columns = False, overwrite = False, subset = None):
+    def update_rows(self, pos, data, auto_add_columns = False, overwrite = False): #, subset = slice(None)):
         '''Update rows in a catalog with information from a different catalog
         
         Contrary to add_catalog, update_rows does not add sources to the catalog, but only adds
@@ -500,7 +509,7 @@ class BaseCatalog(Table.Table):
         The procedures searched for matching sources with self.match_source and fills empty fields
         in those sources which are identified as matches with information from data.
         
-        This methods allows to pass an index array to operate only on a subset of the original catalog.
+        TBD: This methods will allow to pass an index array to operate only on a subset of the original catalog.
         
         input:
             pos: an array of coordintes
@@ -515,17 +524,17 @@ class BaseCatalog(Table.Table):
 
         TBD: Should this go the other way round> Now: steps through data and looks for best match, but should it not really step through self?
         '''
-        if subset.dtype == 'bool':
-            subsetind, = subset.nonzero()
-        elif index == None:
-            subsetind = range(len(self.data))
-        else:
-            subsetind = index
-        subsettable = self.where(subsetind)
+        #if subset.dtype == 'bool':
+            #subsetind, = subset.nonzero()
+        #elif index == None:
+            #subsetind = range(len(self.data))
+        #else:
+            #subsetind = index
+        #subsettable = self.where(subset)
         for i in range(len(data)):
-            match_source=subsettable.match_source(subsettable,pos[i],data[i])
+            match_source=self.match_source(self, pos[i],data[i])
             if match_source != None:
-                self.update_row(subsetind[match_source], data[i], auto_add_columns = auto_add_columns, overwrite = overwrite)
+                self.update_row(match_source, data[i], auto_add_columns = auto_add_columns, overwrite = overwrite)
     
 
 def match_source_dist(self, pos, data):
