@@ -9,7 +9,17 @@ import asciitable
 import Table     # which contains the Table which in turn inherits from atpy
 
 import great_circle_dist
-import coords
+
+''' TBD
+- If RA, DEC are not in table, error message is not very good.
+- different names for RA, DEC? Sounds funny for cartesian coordinates. 
+'''
+
+try:
+    import coords
+    module_coords = True
+except ImportError:
+    module_coords = False
 
 class SimpleCoords(object):
     '''A simple class to handle a column of coordinates for a catalog.
@@ -46,12 +56,21 @@ class SimpleCoords(object):
     def __len__(self):
         return len(self.table)
 
+    def __getattr__(self, attribute):
+
+        if attribute == 'RA':
+            return self.table[:,0]
+        elif attribute == 'DEC':
+            return self.table[:,1]
+        else:
+            raise AttributeError(attribute)
+
     def set(self,pos):
         '''Replaces the full table of coordinates.
 
         Input:
             pos: N*2 np.ndarray for RA, DEC values in degrees
-                 set will remove single dimensional entires and recost 2*N arrays 
+                 set will remove single dimensional entires and recast 2*N arrays 
         '''
         if ~isinstance(pos, np.ndarray): pos = np.array(pos)
         pos = np.squeeze(pos) #remove single dimensional entries
@@ -126,7 +145,7 @@ class SimpleCoords(object):
             pos: [RA, DEC] in deg of footpoint for distance
         keywords:
             maxdist: If no match within maxdist [in deg] is found, None is returned.
-                For negative values of maxdist the closest match is retunred,
+                For negative values of maxdist the closest match is returned,
                 whatever its distance. [default = -1]
         '''
         if units: warnings.warn('Coords to not support automatic unit conversion - Ignored!')
@@ -152,7 +171,8 @@ class SimpleCoords(object):
         dist=self.distto(pos)
         return (dist <= maxdist).nonzero()[0]
 
-class CoordsClassCoords(object):
+if module_coords:
+  class CoordsClassCoords(object):
     '''A simple class to handle a column of coordinates for a catalog.
     
     This class is not very sophisticated, in fact it is the simplest possible
