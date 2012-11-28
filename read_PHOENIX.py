@@ -7,6 +7,7 @@ import warnings
 import re
 import numpy as np
 import scipy.interpolate
+import read_PHOENIX_lineid_data as lineID
 
 def read_block(file, lines_per_block):
     '''read one block of data
@@ -68,13 +69,32 @@ class Phoenix7Reader(asciitable.BasicReader):
         self.header.start_line = None
         self.data.start_line = 0
 
+class Phoenix7LineIDHeader(asciitable.BaseHeader):
+    '''Hardcoded format for PHOENIX .7 files with dolineID = t
+    
+    Usually this could be done with automatic splitting, but sometimes
+    some of the columns get too big and join two field together.
+    Although nobody cares for the later columns, this still causes
+    problems with the auto-detection of columns. Thus, just hard-code the
+    *interesting* columns here.
+    '''
+    def get_cols(self, lines):
+        colstarts=[0, 13, 25, 37, 40, 43, 54, 59, 62, 73, 78, 81, 92, 97, 100, 0]
+        self.names = ['wave', 'flux', 'bbflux', 'iext', 'icnt', 'wll', 'idl', 'iml', 'wlm', 'idm', 'imm', 'wlj', 'idj', 'imj', 'dummy'] 
+        self.cols = []
+        for i in range(len(self.names)):
+            col = asciitable.core.Column(name=self.names[i], index=i)
+            col.start = colstarts[i]
+            col.end = colstarts[i+1] - 1
+            self.cols.append(col)
 
+class Phoenix7LineIDReader(Phoenix7Reader):
+    
+    def __init__(self):
+        Phoenix7Reader.__init__(self)
+        self.header = Phoenix7LineIDHeader()
+        self.header.start_line = None
 
-#def read_spectrum_gz(self, filename):
-    #f = gzip.open(filename, 'rb')
-    #file_content = f.read()
-    #f.close()
-    #read_spectrum(self, file_content)
 
 def read_7(self, filename):
     atpy.asciitables.read_ascii(self, filename, Reader = Phoenix7Reader)
@@ -83,6 +103,27 @@ def read_7(self, filename):
     self.bbflux = 10.**self.bbflux
     self.sort('wave')
 
+def read_7_id(self, filename, keep_all = False):
+    atpy.asciitables.read_ascii(self, filename, Reader = Phoenix7LineIDReader)
+    self.add_empty_column('atom_id', 'a10')
+    self.add_empty_column('mol_id', 'a10')
+    self.add_empty_column('JOLA_id', 'a10')
+    el = self['idl'] / 100
+    ion = np.mod(self['idl'], 100)
+    for i in range(len(self)):
+        self['atom_id'][i] = lineID.elnames[el[i]] + lineID.ionstages[ion[i]] if el[i] <=46 else str(el[i]) + ' ' + str(ion[i])
+        self['mol_id'][i] = lineID.molnames[self['idm'][i]]
+        if self['idj'][i] < len(lineID.fname):
+            self['JOLA_id'][i] = lineID.fname[self['idj'][i]]
+        else:
+            self['JOLA_id'][i] = str(self['idj'][i]) + ' (JOLA)'
+        
+    self.remove_columns(['dummy'])
+    if not keep_all:
+        self.remove_columns(['idl', 'idm', 'idj'])
+    self.flux = 10.**self.flux
+    self.bbflux = 10.**self.bbflux
+    self.sort('wave')
 
 # read tables from the .out files
 # TBD: give table the name of the file opened (this requires checking if file is string = filename or a file object = file.name or a list -> name =''
@@ -93,32 +134,21 @@ def read_out(self, file, tableheader, iteration = -1):
     
     # line looks like: 'no. of depth points: layer=           64'
     nlayers =  int(lines[(np.char.startswith(lines,'no. of depth points: layer='))][0].split(' ')[-1])
-    
-    #make list in which line the output for each iteration starts
-    # find fist line with 'results of iteration no:' - usually this will be 1
-    iter0 = int(lines[(np.char.startswith(lines,'results of iteration no:'))][0].split(' ')[-2])
     line_no_iter = np.char.startswith(lines,'results of iteration no:')
-    temp = np.char.split(lines[line_no_iter], ' ').tolist()
-    if len(temp) == 1:
-        no_iter = np.array(temp[0][-2],dtype='int64')
+    no_iter =  np.array(np.array(np.char.split(lines[line_no_iter], ':').tolist())[:,1], dtype = 'int64')
+    
+    tablestart = np.where(np.char.startswith(lines,tableheader.strip()))[0]
+    
+    if len(tablestart) > 0:
+        print 'file contains ' + str(len(no_iter)) + ' iterations'
+        print 'file contains ' + str(len(tablestart)) + ' tables starting with:'
+        print tableheader.strip()
+        print 'reading table ' + str(iteration+1) + ' of ' + str(len(tablestart))
+        print 'Use negative numbers to count backwards from last iteration'
+        start = tablestart[iteration]
+        atpy.asciitables.read_ascii(self, lines[start:start + nlayers + 1] , Reader=exponentialDReader)
     else:
-        no_iter = np.array(np.array(temp[0:len(temp)-1])[:,-2],dtype='int64') # I have no idea why lists[0:9] works but lists itself does not
-    line_no_iter = np.where(line_no_iter)[0]
-    
-    startcomp = line_no_iter[iteration]
-    if iteration == -1:  # to the end of the file
-        endcomp = len(lines)
-    else:  #to the next iteration
-        endcomp = line_no_iter[iteration + 1]
-    
-    tablestart = startcomp + np.where(np.char.startswith(lines[startcomp:endcomp],tableheader))[0]
-    if len(tablestart) > 1:
-        warnings.warn('Table header in ambiguous in iteration {!s} in table'.format(iteration))
-    print 'This iterations is labelled: ', lines[line_no_iter[iteration]]
-    print 'Using first table of'
-    print lines[tablestart]
-    tablestart = tablestart[0]
-    atpy.asciitables.read_ascii(self, lines[tablestart:tablestart + nlayers + 1] , Reader=exponentialDReader)
+        raise ValueError('No line starts with: ' + tableheader.strip())
 
 ### wrapper functions, which open the file if a string is passed and then pass the file object to the reader
 def read_rfout(filename):
@@ -220,7 +250,7 @@ def read_20(self, file):
     self.add_column('temp', read_block(file, lines_per_block))
     while True:
         try:
-            colname = file.readline()[0:13].strip().replace(' ','_')
+            colname = file.readline()[0:13].strip()
             coldata = read_block(file, lines_per_block)
             self.add_column(colname, coldata)
         except ValueError:
@@ -229,11 +259,12 @@ def read_20(self, file):
 
     
 atpy.register_reader('.7',read_7, override = True)
-atpy.register_extensions('.7',['7'])
+atpy.register_extensions('.7',['7'], override = True)
 atpy.register_reader('.out',read_out, override = True)
-atpy.register_extensions('.out',['out'])
+atpy.register_extensions('.out',['out'], override = True)
 atpy.register_reader('.20',_read_20, override = True)
-atpy.register_extensions('.20',['20', '20.gz'])  # _read_20 has its own mechanism to open gz files
+atpy.register_extensions('.20',['20', '20.gz'], override = True)  # _read_20 has its own mechanism to open gz files
+atpy.register_reader('dolineid', read_7_id, override = True)
 
 #This compiles, now it has to be tested.
 def rotation(wave, flux, v_rot, limb, resolution = 0.1, rotation_profile = None):
