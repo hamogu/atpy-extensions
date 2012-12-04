@@ -1,5 +1,5 @@
 import numpy as np
-import warnings
+#import warnings
 import atpy
 
 # TBD add support for non-scalars 
@@ -35,7 +35,7 @@ class Table(atpy.Table):
                     test=np.array( self.columns[name].null, dtype=self[name].dtype)
                 except ValueError:
                     self.columns[name].__dict__['null']=self.default_null(self[name].dtype)
-                    warnings.warn("WARNING: null value of column %s has been reset to default." % name)
+                    #warnings.warn("WARNING: null value of column %s has been reset to default." % name)
 
     def default_null(self, dtype):
         '''Return the default null for the datatype dtype.

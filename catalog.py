@@ -367,6 +367,11 @@ def coord_str2RADEC(self, data):
     DEC = t.d + t.m / 60. + t.s/3600.
     return coord_simple(self, {self._ra: RA, self._dec: DEC})
 
+def coord_CDS2RADEC(self, data):
+    RA = data['RAh']*15. + data['RAm'] / 4. + data['RAs']/4./60.
+    DEC = ((data['DE-'] !='-')*2-1) * (data['DEd'] + data['DEm'] / 60. + data['DEs']/3600.)
+    return np.array([RA, DEC]).transpose()
+
 class BaseCatalog(Table.Table):
     
     def __init__(self, *args, **kwargs):
